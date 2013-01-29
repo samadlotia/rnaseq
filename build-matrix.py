@@ -47,8 +47,8 @@ def build_all_genes_set(annot_sam_files, ambiguous_method):
 
 def build_gene_indices(annot_sam_files, ambiguous_method):
 	gene_set = build_all_genes_set(annot_sam_files, ambiguous_method)
-	gene_list = sorted_list(genes_set)
-	gene_indices = indices_dict(genes_list)
+	gene_list = sorted_list(gene_set)
+	gene_indices = indices_dict(gene_list)
 	return (gene_list, gene_indices)
 
 
@@ -57,9 +57,10 @@ def make_gene_count_matrix(samples, ambiguous_method):
 	(gene_list, gene_indices) = build_gene_indices(annot_sam_files, ambiguous_method)
 	rewind_files(annot_sam_files)
 
-	replicate_indices = indices_dict(each_replicate(samples))
-	gene_count_matrix = np.zeros((len(gene_indices), len(replicate_indices)), np.uint32)
+	replicate_list = list(each_replicate(samples))
+	replicate_indices = indices_dict(replicate_list)
 
+	gene_count_matrix = np.zeros((len(gene_list), len(replicate_list)), np.uint32)
 	for (replicate, col) in replicate_indices.iteritems():
 		annot_sam_file = annot_sam_files[replicate]
 		for gene in parse_annotated_sam(annot_sam_file, ambiguous_method):
@@ -69,20 +70,20 @@ def make_gene_count_matrix(samples, ambiguous_method):
 
 	close_files(annot_sam_files)
 
-	return (gene_count_matrix, gene_indices, replicate_indices)
+	return (gene_count_matrix, gene_list, replicate_list)
 
 def main(samples, ambiguous_method):
 	if not check_files_in_samples(samples):
 		return
 	
-	(gene_count_matrix, gene_indices, replicate_indices) = make_gene_count_matrix(samples, ambiguous_method)
+	(gene_count_matrix, gene_list, replicate_list) = make_gene_count_matrix(samples, ambiguous_method)
 
 	gene_count_matrix_file = open(Gene_count_matrix_file_path, 'wb')
 	np.save(gene_count_matrix_file, gene_count_matrix)
 	gene_count_matrix_file.close()
 
-	gene_indices_file = open(Gene_indices_file_path , 'wb')
-	pickle.dump(gene_indices, gene_indices_file, pickle.HIGHEST_PROTOCOL)
-	gene_indices_file.close()
+	gene_list_file = open(Gene_indices_file_path , 'wb')
+	pickle.dump(gene_list, gene_list_file, pickle.HIGHEST_PROTOCOL)
+	gene_list_file.close()
 
 main(All_samples, Ambiguous_method_ignore)

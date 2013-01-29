@@ -1,6 +1,7 @@
 import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 from util import indices_dict, each_replicate
 from config import All_samples, Gene_count_matrix_file_path, Gene_indices_file_path, Sample_plots
 import csv
@@ -11,47 +12,60 @@ def load_gene_count_matrix():
 	gene_count_matrix_file.close()
 	return gene_count_matrix 
 
-def load_gene_indices():
-	gene_indices_file = open(Gene_indices_file_path , 'rb')
-	gene_indices = pickle.load(gene_indices_file)
-	gene_indices_file.close()
-	return gene_indices 
+def load_gene_list():
+	gene_list_file = open(Gene_indices_file_path , 'rb')
+	gene_list = pickle.load(gene_list_file)
+	gene_list_file.close()
+	return gene_list 
 
-def calc_stats(samples, replicate_indices, gene_count_matrix, gene_indices):
+def any_zeros(row):
+	for i in range(len(row)):
+		if row[i] == 0:
+			return True
+	return False
+
+def calc_stats(samples, replicate_indices, gene_count_matrix, gene_list):
 	sample_stats = dict()
 	for sample, replicates in samples.iteritems():
 		sample_matrix = np.column_stack((gene_count_matrix[:,replicate_indices[replicate]] for replicate in replicates))
 		means = np.mean(sample_matrix, axis=1)
-		stddevs = np.std(sample_matrix, axis=1)
-		sample_stats[sample] = (means, stddevs)
+		#stddevs = np.std(sample_matrix, axis=1)
+		logmeans = np.log(means)
+		sample_stats[sample] = (sample_matrix, means, logmeans)
 	return sample_stats
 
-def indices_to_list(indices):
-	list_ = [0] * len(indices)
-	for (elem, index) in indices.iteritems():
-		list_[index] = elem
-	return list_
 
-def make_plots(sample_stats, plots, gene_list):
-	for sample1, sample2 in plots:
-		means1, stddevs1 = sample_stats[sample1]
-		means2, stddevs2 = sample_stats[sample2]
-		diffmeans = means1 - means2
-		diffstddevs = ((means1 ** 2. / len(means1)) + (means2 ** 2. / len(means2))) ** .5
-		plot = [(gene_list[i], diffmeans[i], diffstddevs[i]) for i in xrange(len(diffmeans))]
-		plot.sort(key=lambda x: x[1])
-		with open('%s_vs_%s.csv' % (sample1, sample2), 'w') as output:
+def output_tables(samples, sample_stats, gene_list):
+	for sample, (sample_matrix, means, logmeans) in sample_stats.iteritems():
+		replicates = samples[sample]
+		with open('%s.csv' % sample, 'w') as output:
 			writer = csv.writer(output)
-			writer.writerows(plot)
+			header = ['gene']
+			header.extend(replicates)
+			header.extend(['mean', 'logmean'])
+			writer.writerow(header)
+
+			for i in range(len(gene_list)):
+				row = [gene_list[i]]
+				row.extend(sample_matrix[i,:])
+				row.append(means[i])
+				row.append(logmeans[i])
+				writer.writerow(row)
 		
+
+def output_matplotlib(sample_stats, gene_list, plots):
+	for sampleA, sampleB in plots:
+		sample_matrixA, _, logmeansA, _ = sample_stats[sampleA]
+		sample_matrixB, _, logmeansB, _ = sample_stats[sampleB]
+		for i in xrange(len(gene_list)):
+			gene = gene_list[i]
 
 def main(samples):
 	replicate_indices = indices_dict(each_replicate(samples))
 	gene_count_matrix = load_gene_count_matrix()
-	gene_indices = load_gene_indices()
-	gene_list = indices_to_list(gene_indices)
-	sample_stats = calc_stats(samples, replicate_indices, gene_count_matrix, gene_indices)
-	make_plots(sample_stats, Sample_plots, gene_list)
-
+	gene_list = load_gene_list()
+	sample_stats = calc_stats(samples, replicate_indices, gene_count_matrix, gene_list)
+	output_tables(samples, sample_stats, gene_list)
+	output_matplotlib(sample_stats, gene_list, Sample_plots)
 
 main(All_samples)
