@@ -96,7 +96,7 @@ def output_matplotlib(sample_stats, gene_list, sampleA, sampleB):
 		logmeanB = logmeansB[i]
 		plt.plot(logmeanA, logmeanB, marker='.', label=gene)
 		#plt.text(logmeanA, logmeanB, gene, fontsize=4, alpha=0.3, va='bottom', ha='left')
-		plt.show()
+	plt.show()
 
 def main(samples):
 	replicate_indices = indices_dict(each_replicate(samples))
