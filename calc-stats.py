@@ -48,7 +48,8 @@ def calc_stats(samples, replicate_indices, gene_count_matrix, gene_list):
 		sample_matrix = np.column_stack((gene_count_matrix[:,replicate_indices[replicate]] for replicate in replicates))
 		norm_matrix = normalize_by_replicate(sample_matrix)
 		means = np.mean(norm_matrix, axis=1)
-		logmeans = np.log(means)
+		logmeans = np.log10(means)
+		logmeans += 7.0
 		logmeans[np.isinf(logmeans)] = 0.0
 		sample_stats[sample] = (norm_matrix, means, logmeans)
 	return sample_stats
@@ -73,7 +74,7 @@ def output_tables(samples, sample_stats, gene_list):
 		
 
 def output_matplotlib(sample_stats, gene_list, plots):
-	for sampleA, sampleB in plots[1:2]:
+	for sampleA, sampleB in plots[2:3]:
 		sample_matrixA, _, logmeansA = sample_stats[sampleA]
 		sample_matrixB, _, logmeansB = sample_stats[sampleB]
 		plt.xlabel(sampleA)
@@ -82,8 +83,8 @@ def output_matplotlib(sample_stats, gene_list, plots):
 			gene = gene_list[i]
 			logmeanA = logmeansA[i]
 			logmeanB = logmeansB[i]
-			plt.plot(logmeanA, logmeanB, marker='.')
-			plt.text(logmeanA, logmeanB, gene, fontsize=4, alpha=0.3, va='bottom', ha='left')
+			plt.plot(logmeanA, logmeanB, marker='.', label=gene)
+			#plt.text(logmeanA, logmeanB, gene, fontsize=4, alpha=0.3, va='bottom', ha='left')
 		plt.show()
 
 def main(samples):
