@@ -13,13 +13,6 @@ All_samples = {
 			'Lin41-WC-BC06_S2_L001_R1_003'),
 }
 
-Sample_plots = (
-	# x             y
-	('lin41-wc',	'delta-lin41'),
-	('lin41-wc',	'lin41-gran'),
-	('delta-lin41', 'lin41-gran'),
-)
-
 def annotated_sam_file_path(replicate_name):
 	return '%s/tophat_out/accepted_hits-annotated.sam' % replicate_name
 
