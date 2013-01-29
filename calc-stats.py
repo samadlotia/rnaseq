@@ -1,5 +1,6 @@
 import cPickle as pickle
 import numpy as np
+import re
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from util import indices_dict, each_replicate
@@ -24,14 +25,32 @@ def any_zeros(row):
 			return True
 	return False
 
+Ensg_re = re.compile(r'ENSG0+(\d+)')
+
+def clean_ensg_name(fullname):
+	return Ensg_re.match(fullname).group(1)
+
+def normalize_by_replicate(sample_matrix):
+	_, numcols = sample_matrix.shape
+	normcols = list()
+	for x in xrange(numcols):
+		col = sample_matrix[:,x]
+		total = float(np.sum(col))
+		normcol = col / total
+		normcol = np.atleast_2d(normcol).transpose()
+		normcols.append(normcol)
+	norm_matrix = np.hstack(normcols)
+	return norm_matrix
+
 def calc_stats(samples, replicate_indices, gene_count_matrix, gene_list):
 	sample_stats = dict()
 	for sample, replicates in samples.iteritems():
 		sample_matrix = np.column_stack((gene_count_matrix[:,replicate_indices[replicate]] for replicate in replicates))
-		means = np.mean(sample_matrix, axis=1)
-		#stddevs = np.std(sample_matrix, axis=1)
+		norm_matrix = normalize_by_replicate(sample_matrix)
+		means = np.mean(norm_matrix, axis=1)
 		logmeans = np.log(means)
-		sample_stats[sample] = (sample_matrix, means, logmeans)
+		logmeans[np.isinf(logmeans)] = 0.0
+		sample_stats[sample] = (norm_matrix, means, logmeans)
 	return sample_stats
 
 
@@ -54,16 +73,23 @@ def output_tables(samples, sample_stats, gene_list):
 		
 
 def output_matplotlib(sample_stats, gene_list, plots):
-	for sampleA, sampleB in plots:
-		sample_matrixA, _, logmeansA, _ = sample_stats[sampleA]
-		sample_matrixB, _, logmeansB, _ = sample_stats[sampleB]
+	for sampleA, sampleB in plots[1:2]:
+		sample_matrixA, _, logmeansA = sample_stats[sampleA]
+		sample_matrixB, _, logmeansB = sample_stats[sampleB]
+		plt.xlabel(sampleA)
+		plt.ylabel(sampleB)
 		for i in xrange(len(gene_list)):
 			gene = gene_list[i]
+			logmeanA = logmeansA[i]
+			logmeanB = logmeansB[i]
+			plt.plot(logmeanA, logmeanB, marker='.')
+			plt.text(logmeanA, logmeanB, gene, fontsize=4, alpha=0.3, va='bottom', ha='left')
+		plt.show()
 
 def main(samples):
 	replicate_indices = indices_dict(each_replicate(samples))
 	gene_count_matrix = load_gene_count_matrix()
-	gene_list = load_gene_list()
+	gene_list = map(clean_ensg_name, load_gene_list())
 	sample_stats = calc_stats(samples, replicate_indices, gene_count_matrix, gene_list)
 	output_tables(samples, sample_stats, gene_list)
 	output_matplotlib(sample_stats, gene_list, Sample_plots)
